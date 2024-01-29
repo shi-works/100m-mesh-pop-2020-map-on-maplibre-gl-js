@@ -1,0 +1,502 @@
+<html>
+
+<head>
+    <title>全国簡易100mメッシュ人口分布マップ</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css' rel='stylesheet' />
+    <script src="https://unpkg.com/pmtiles@2.11.0/dist/index.js"></script>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .map-overlay {
+            font: bold 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            position: absolute;
+            width: 180px;
+            bottom: 20px;
+            left: 0;
+            padding: 10px;
+        }
+
+        .map-overlay .map-overlay-inner {
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .map-overlay label {
+            display: block;
+            margin: 0 0 0px;
+            font-size: 12px;
+            top: 100px;
+            left: 10px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .map-overlay input {
+            background-color: transparent;
+            display: inline-block;
+            width: 100%;
+            position: relative;
+            margin: 0;
+            cursor: ew-resize;
+        }
+
+        .maplibregl-popup .maplibregl-popup-content {
+            padding: 8px 10px;
+            font: 12px/14px Arial, Helvetica, sans-serif;
+            color: black;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.9);
+            border-radius: 5px;
+            width: 220px;
+            height: 240px;
+            /*overflow: scroll;*/
+        }
+
+        .maplibregl-popup .maplibregl-popup-content .shinouchimei-title {
+            color: red;
+            font-size: larger;
+        }
+
+        .maplibregl-popup .maplibregl-popup-content .pop-info th {
+            width: 100px;
+        }
+
+        /* 1列目 (左側) を右寄せにする */
+        .maplibregl-popup .maplibregl-popup-content .pop-info td:nth-child(1) {
+            text-align: right;
+            width: 100px;
+            white-space: nowrap;
+            /* 折り返しを防ぐ */
+        }
+
+        /* 2列目 (右側) のセルの幅を広げる */
+        .maplibregl-popup .maplibregl-popup-content .pop-info td:nth-child(2) {
+            text-align: left;
+            width: 150px;
+            white-space: nowrap;
+            /* 折り返しを防ぐ */
+        }
+
+        .maplibregl-popup .maplibregl-popup-content .pop-info b {
+            text-align: right;
+        }
+
+        .maplibregl-popup .maplibregl-popup-content .pop-info,
+        .maplibregl-popup .maplibregl-popup-content .pop-info th,
+        .maplibregl-popup .maplibregl-popup-content .pop-info td {
+            font: 12px/14px Arial, Helvetica, sans-serif;
+        }
+
+        .legend-hanrei {
+            position: fixed;
+            right: 10px;
+            bottom: 230px;
+            z-index: 1;
+            width: auto;
+        }
+
+        .image-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .legend-hanrei img {
+            width: 50%;
+            height: auto;
+        }
+
+        .legend {
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 3px;
+            bottom: 40px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
+            font: 12px/14px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            padding: 10px;
+            position: absolute;
+            right: 10px;
+            z-index: 1;
+            line-height: 20px;
+            height: auto;
+        }
+
+        .legend h4 {
+            margin: 0 0 10px;
+        }
+
+        .legend div span {
+            border-radius: 50%;
+            display: inline-block;
+            height: 15px;
+            margin-right: 10px;
+            width: 15px;
+            color: orangered
+        }
+
+        .square {
+            width: 15px;
+            height: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="legend-pop" style="display:block;" class='legend'>
+        <h4>人口(100mﾒｯｼｭ)</h4>
+        <div class="square" style='background-color: #0000FF; display: inline-block;'>
+        </div><span style="display: inline-block; margin-left: 5px;">～10人未満</span><br>
+        <div class="square" style='background-color: #00FFFF; display: inline-block;'>
+        </div><span style="display: inline-block; margin-left: 5px;">10～20人未満</span><br>
+        <div class="square" style='background-color: #00FF00; display: inline-block;'>
+        </div><span style="display: inline-block; margin-left: 5px;">20～40人未満</span><br>
+        <div class="square" style='background-color: #FFBF00; display: inline-block;'>
+        </div><span style="display: inline-block; margin-left: 5px;">40～60人未満</span><br>
+        <div class="square" style='background-color: #FF0000; display: inline-block;'>
+        </div><span style="display: inline-block; margin-left: 5px;">60～80人未満</span><br>
+        <div class="square" style='background-color: #CB00CB; display: inline-block;'>
+        </div><span style="display: inline-block; margin-left: 5px;">80人以上</span><br>
+    </div>
+    <script type="module">
+        // Terrain-RGB形式への変換モジュール
+        maplibregl.addProtocol('numpng', makeNumPngProtocol());
+        import { makeNumPngProtocol } from './numPngProtocol.js'
+
+        // addProtocolの設定
+        let protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol("pmtiles", protocol.tile);
+
+        // マップの初期化
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'std.json',
+            center: [140.4744, 39.625],
+            zoom: 8.48,
+            minZoom: 1,
+            maxZoom: 23,
+            pitch: 0,
+            maxPitch: 85,
+            bearing: 0,
+            hash: true,
+            attributionControl: false
+        });
+
+        // ズーム・回転
+        map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
+        // フルスクリーンモードのオンオフ
+        map.addControl(new maplibregl.FullscreenControl(), 'top-left');
+
+        // 現在位置表示
+        map.addControl(new maplibregl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: false
+            },
+            fitBoundsOptions: { maxZoom: 18 },
+            trackUserLocation: true,
+            showUserLocation: true
+        }), 'top-left');
+
+        // スケール表示
+        map.addControl(new maplibregl.ScaleControl({
+            maxWidth: 200,
+            unit: 'metric'
+        }));
+
+        // Attributionを折りたたみ表示
+        map.addControl(new maplibregl.AttributionControl({
+            compact: true,
+            customAttribution: '（<a href="https://twitter.com/shi__works" target="_blank">Twitter</a> | <a href="https://github.com/shi-works/noto-hanto-earthquake-2024-100m-mesh-pop-map-on-maplibre-gl-js" target="_blank">Github</a>）'
+        }));
+
+        // 3D地形コントロール
+        map.addControl(
+            new maplibregl.TerrainControl({
+                source: 'aist-dem',
+                exaggeration: 1 // 標高を強調する倍率
+            }), 'top-left'
+        );
+
+        // 人口色分け用のフィルタ準備
+        let f1 = ["all", [">=", ['to-number', ["get", "PopT"]], 0], ["<", ['to-number', ["get", "PopT"]], 10]];
+        let f2 = ["all", [">=", ['to-number', ["get", "PopT"]], 10], ["<", ['to-number', ["get", "PopT"]], 20]];
+        let f3 = ["all", [">=", ['to-number', ["get", "PopT"]], 20], ["<", ['to-number', ["get", "PopT"]], 40]];
+        let f4 = ["all", [">=", ['to-number', ["get", "PopT"]], 40], ["<", ['to-number', ["get", "PopT"]], 60]];
+        let f5 = ["all", [">=", ['to-number', ["get", "PopT"]], 60], ["<", ['to-number', ["get", "PopT"]], 80]];
+        let f6 = ["all", [">=", ['to-number', ["get", "PopT"]], 80], ["<", ['to-number', ["get", "PopT"]], 1000000]];
+
+        // 人口色分け用色の準備
+        let colors = [
+            '#0000FF',
+            '#00FFFF',
+            '#00FF00',
+            '#FFBF00',
+            '#FF0000',
+            '#CB00CB'
+        ]
+
+        map.on('load', function () {
+            // 産総研 シームレス標高タイルソース
+            map.addSource("aist-dem", {
+                type: 'raster-dem',
+                tiles: [
+                    'numpng://tiles.gsj.jp/tiles/elev/mixed/{z}/{y}/{x}.png',
+                ],
+                attribution: '<a href="https://tiles.gsj.jp/tiles/elev/tiles.html" target="_blank">産業技術総合研究所 シームレス標高タイル(統合DEM)</a>',
+                tileSize: 256
+            });
+
+            // 産総研 シームレス標高タイルセット
+            // map.setTerrain({ 'source': 'aist-dem', 'exaggeration': 1 });
+
+            // 行政区域（ポリゴン）ソース
+            map.addSource("pmtiles-gyouseikai", {
+                type: "vector",
+                url: "pmtiles://" + "https://xs489works.xsrv.jp/pmtiles-data/ksj/N03-23_230101_gyouseikai.pmtiles",
+                attribution: '<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-v3_1.html">国土数値情報 行政区域データ（令和5年度）</a>'
+            });
+
+            // 行政区域ラインレイヤ
+            map.addLayer({
+                "id": "gyouseikai-line",
+                "type": "line",
+                "source": "pmtiles-gyouseikai",
+                "source-layer": "N0323_230101_gyouseikai",
+                minzoom: 8,
+                maxzoom: 18,
+                'paint': {
+                    'line-color': 'rgba(0, 0, 0, 1)',
+                    'line-width': 1.5
+                }
+            });
+
+            // 令和2年簡易100mメッシュ人口（全国）ソース
+            map.addSource("100m_mesh_pop2020", {
+                type: "vector",
+                url: "pmtiles://https://xs489works.xsrv.jp/pmtiles-data/100m_mesh_pop2020/100m_mesh_pop2020.pmtiles",
+                attribution: '<a href="https://gtfs-gis.jp/teikyo/kani_100m_download2020.html" target="_blank">地域・交通データ研究所 簡易100mメッシュ人口データ(2020年国勢調査ベース)</a>',
+            });
+
+            // 令和2年簡易100mメッシュ人口（全国）レイヤ
+            map.addLayer({
+                'id': '100m_mesh_pop2020_fill',
+                'type': 'fill-extrusion',
+                'source': '100m_mesh_pop2020',
+                'source-layer': "100m_mesh_pop2020fgb",
+                minzoom: 8,
+                maxzoom: 23,
+                'layout': {},
+                'paint': {
+                    'fill-extrusion-color': [
+                        "case",
+                        f1, colors[0],
+                        f2, colors[1],
+                        f3, colors[2],
+                        f4, colors[3],
+                        f5, colors[4],
+                        f6, colors[5],
+                        colors[5]
+                    ],
+                    'fill-extrusion-height': ["*", ['to-number', ["get", "PopT"]], 10],
+                    'fill-extrusion-opacity': 0.6
+                }
+            });
+
+            // 役場ソース
+            map.addSource('town-hall', {
+                'type': 'geojson',
+                'data': 'https://xs489works.xsrv.jp/pmtiles-data/ksj/P05-22_01_47_town_hall_add_cityname.geojson',
+                attribution: '<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P05-v3_0.html">国土数値情報 市町村役場（令和4年度）</a>'
+            });
+
+            // 役場ポイントレイヤ
+            // 外側の黒い円
+            map.addLayer({
+                'id': 'town-hall-points-outer-1',
+                'type': 'circle',
+                'source': 'town-hall',
+                'minzoom': 9,
+                'maxzoom': 12,
+                'paint': {
+                    'circle-color': 'rgba(0, 0, 0, 1)',
+                    'circle-radius': 5.5,
+                    'circle-blur': 0,
+                    'circle-opacity': 1
+                }
+            });
+
+            // 内側の白い円
+            map.addLayer({
+                'id': 'town-hall-points-inner-1',
+                'type': 'circle',
+                'source': 'town-hall',
+                'minzoom': 9,
+                'maxzoom': 12,
+                'paint': {
+                    'circle-color': 'rgba(255, 255, 255, 1)',
+                    'circle-radius': 4,
+                    'circle-blur': 0,
+                    'circle-opacity': 1
+                }
+            });
+
+            // 外側の黒い円
+            map.addLayer({
+                'id': 'town-hall-points-outer-2',
+                'type': 'circle',
+                'source': 'town-hall',
+                'minzoom': 9,
+                'maxzoom': 12,
+                'paint': {
+                    'circle-color': 'rgba(0, 0, 0, 1)',
+                    'circle-radius': 3,
+                    'circle-blur': 0,
+                    'circle-opacity': 1
+                }
+            });
+
+            // 内側の白い円
+            map.addLayer({
+                'id': 'town-hall-points-inner-2',
+                'type': 'circle',
+                'source': 'town-hall',
+                'minzoom': 9,
+                'maxzoom': 12,
+                'paint': {
+                    'circle-color': 'rgba(255, 255, 255, 1)',
+                    'circle-radius': 2.25,
+                    'circle-blur': 0,
+                    'circle-opacity': 1
+                }
+            });
+
+            // 役場ラベルレイヤ
+            map.addLayer({
+                'id': 'town-hall-labels-1',
+                'type': 'symbol',
+                'source': 'town-hall',
+                minzoom: 9,
+                maxzoom: 12,
+                'layout': {
+                    'text-field': ['get', 'city_name'],
+                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                    'text-size': 12,
+                    'text-anchor': 'center',
+                    'text-justify': 'center',
+                    'text-offset': [0, -1.0],
+                    'text-allow-overlap': true
+                },
+                'paint': {
+                    'text-color': 'rgba(0, 0, 0, 1)',
+                    'text-halo-color': 'rgba(255, 255, 255, 1)',
+                    'text-halo-width': 1
+                }
+            });
+
+            // 役場ラベルレイヤ
+            map.addLayer({
+                'id': 'town-hall-labels-2',
+                'type': 'symbol',
+                'source': 'town-hall',
+                minzoom: 12,
+                maxzoom: 18,
+                'layout': {
+                    'text-field': ['get', 'city_name'],
+                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                    'text-size': 18,
+                    'text-anchor': 'center',
+                    'text-justify': 'center',
+                    'text-offset': [0, -1.0],
+                    'text-allow-overlap': true
+                },
+                'paint': {
+                    'text-color': 'rgba(0, 0, 0, 1)',
+                    'text-halo-color': 'rgba(255, 255, 255, 1)',
+                    'text-halo-width': 2
+                }
+            });
+
+        });
+
+        // クリック時のポップアップ表示
+        map.on('click', '100m_mesh_pop2020_fill', (e) => {
+            var coordinates = e.features[0].geometry.coordinates[0]; // ポリゴンの頂点の配列
+            var lngSum = 0, latSum = 0;
+
+            coordinates.forEach(coord => {
+                lngSum += coord[0]; // 経度の合計
+                latSum += coord[1]; // 緯度の合計
+            });
+
+            var lng = lngSum / coordinates.length; // 経度の平均
+            var lat = latSum / coordinates.length; // 緯度の平均
+
+            var MESH_CODE = e.features[0].properties['MESH_CODE'];
+            var PopT = e.features[0].properties['PopT'];
+            var Pop0_14 = e.features[0].properties['Pop0_14'];
+            var Pop15_64 = e.features[0].properties['Pop15_64'];
+            var Pop65over = e.features[0].properties['Pop65over'];
+            var Pop75over = e.features[0].properties['Pop75over'];
+            var Pop85over = e.features[0].properties['Pop85over'];
+
+            new maplibregl.Popup()
+                .setLngLat(e.lngLat)
+                .setHTML(
+                    '<div style="solid #000; font-size: 1.2em; color: #0065CB;"><strong>簡易100mメッシュ人口</strong></div>' +
+                    '<div style="solid #000; font-size: 1.2em; color: #0065CB;"><strong>(2020年国勢調査ベース)</strong></div>' +
+                    '<table class="pop-info">' +
+                    '<tr>' +
+                    '<th></th>' +
+                    '<th></th>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '<td>メッシュコード：</td>' +
+                    '<td><b>' + MESH_CODE + '</b></td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '<td>総人口：</td>' +
+                    '<td><b>' + PopT + '人' + '</b></td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '<td>0～14歳人口：</td>' +
+                    '<td><b>' + Pop0_14 + '人' + '</b></td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '<td>15～64歳人口：</td>' +
+                    '<td><b>' + Pop15_64 + '人' + '</b></td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '<td>65歳以上人口：</td>' +
+                    '<td><b>' + Pop65over + '人' + '</b></td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '<td>75歳以上人口：</td>' +
+                    '<td><b>' + Pop75over + '人' + '</b></td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '<td>85歳以上人口：</td>' +
+                    '<td><b>' + Pop85over + '人' + '</b></td>' +
+                    '</tr>' +
+                    '</table>' +
+                    '※このデータは、簡易な方法で人口を按分したものであり、当該100mメッシュの実際の人口を示しているものではありません。' + '<br>' +
+                    '<a href=\https://www.google.com/maps?q=' + lat + "," + lng + "&hl=ja' target='_blank'>🌎Google Maps</a>" + ' ' +
+                    '<a href=\https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + lat + "," + lng + "&hl=ja' target='_blank'>📷Street View</a>"
+                )
+                .addTo(map);
+        });
+    </script>
+</body>
+
+</html>
