@@ -2,6 +2,8 @@
 ## Public Website
 https://shi-works.github.io/100m-mesh-pop-2020-map-on-maplibre-gl-js/
 
+![image](https://github.com/shi-works/100m-mesh-pop-2020-map-on-maplibre-gl-js/assets/71203808/0aeb7d21-ef28-4c3e-993f-2ef2704d5d66)
+
 ## Data Source
 ### 人口分布データ
 - 令和2年簡易100mメッシュ人口データ（全国）（PMTiles形式）
